@@ -24,4 +24,29 @@ Use the Branch SDK (branch.io) to create and power the links that point back to 
   s.source_files = "Branch-SDK/Branch-SDK/*.{h,m}", "Branch-SDK/Branch-SDK/Requests/*.{h,m}"
 
   s.frameworks = 'AdSupport', 'CoreTelephony', 'MobileCoreServices'
+  
+  ## Trying Hack to prevent issue with use_frameworks!
+  ## -------------------------------------------------------------------------------------------------
+  s.prepare_command = <<-CMD
+    echo "
+      #import <Foundation/Foundation.h>
+
+      @interface #{ s.name }Dummy : NSObject
+      @end
+
+      @implementation #{ s.name }Dummy
+      @end
+    " > Source/#{ s.name }Dummy.m
+  CMD
+  # CocoaPods prefers to build using dynamic frameworks, and in fact requires it for Swift projects. 
+  # This means that it can't link a static lib directly. As a workaround we create a dynamic framework 
+  # wrapper around the static library using the following steps:
+  #   - Create a dummy class so that we actually have something to build.
+  #   - Build that dummy class as a dynamic framework.
+  #   - Link the static library into that dynamic framework using forced linker flags (see the xcconfig below).
+  s.source_files = "Source/**/*.{h,m}"
+  s.preserve_paths = "./libStaticLib.a"
+  s.xcconfig = { "OTHER_LDFLAGS" => "-force_load $(PODS_ROOT)/#{ s.name }/libStaticLib.a" }
+  ## -------------------------------------------------------------------------------------------------
+  
 end
